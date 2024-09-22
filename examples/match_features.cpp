@@ -4,6 +4,30 @@
 #include "image.hpp"
 #include "sift.hpp"
 
+#include "matrix.hpp"
+
+Matrix<double> constructMatrixAForFundamentalEstimation(std::vector<std::pair<sift::Keypoint, sift::Keypoint>>& kps)
+{
+    Matrix<double> result(kps.size(),9);
+    double row[9];
+    int i = 0;
+    for (const auto & p : kps)
+    {
+        row[0] = p.first.x * p.second.x;
+        row[1] = p.first.x * p.second.y;
+        row[2] = p.first.x;
+        row[3] = p.first.y * p.second.x;
+        row[4] = p.first.y * p.second.y;
+        row[5] = p.first.y;
+        row[6] = p.second.x;
+        row[7] = p.second.y;
+        row[8] = 1;
+        result.setRow(row, i, 9);
+        ++i;
+    }
+    return result;
+}
+
 int main(int argc, char *argv[])
 {
     std::ios_base::sync_with_stdio(false);
@@ -22,7 +46,14 @@ int main(int argc, char *argv[])
     std::vector<std::pair<int, int>> matches = sift::find_keypoint_matches(kps_a, kps_b);
     Image result = sift::draw_matches(a, b, kps_a, kps_b, matches);
     result.save("result.jpg");
-    
+
+    std::vector<std::pair<sift::Keypoint, sift::Keypoint>> pointsForFundamental;
+    for (const auto p : matches)
+    {
+        pointsForFundamental.push_back(std::pair<sift::Keypoint, sift::Keypoint>(kps_a.at(p.first), kps_b.at(p.second)));
+    }
+    auto A = constructMatrixAForFundamentalEstimation(pointsForFundamental);
+
     std::cout << "Found " << matches.size() << " feature matches. Output image is saved as result.jpg\n";
     return 0;
 }

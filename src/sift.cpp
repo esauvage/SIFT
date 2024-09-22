@@ -28,13 +28,13 @@ ScaleSpacePyramid generate_gaussian_pyramid(const Image& img, float sigma_min,
     // determine sigma values for bluring
     float k = std::pow(2, 1.0/(double)(scales_per_octave));
     std::vector<float> sigma_vals {base_sigma};
-    float kPowI = 1;
+    //float kPowI = 1;
     for (int i = 1; i < imgs_per_octave; i++) {
-       //float sigma_prev = base_sigma * std::pow(k, i - 1);
-       float sigma_prev = base_sigma * kPowI;
+       float sigma_prev = base_sigma * std::pow(k, i - 1);
+       //float sigma_prev = base_sigma * kPowI;
        float sigma_total = k * sigma_prev;
         sigma_vals.push_back(std::sqrt(sigma_total*sigma_total - sigma_prev*sigma_prev));
-        kPowI *= k;
+        //kPowI *= k;
     }
 
     // create a scale space pyramid of gaussian images
@@ -438,6 +438,7 @@ void compute_keypoint_descriptor(Keypoint& kp, float theta,
     hists_to_vec(histograms, kp.descriptor);
 }
 
+//Trouve les blobs, renvoyés dans une structure de Keypoint
 std::vector<Keypoint> find_keypoints_and_descriptors(const Image& img, float sigma_min,
                                                      int num_octaves, int scales_per_octave, 
                                                      float contrast_thresh, float edge_thresh, 
@@ -445,10 +446,16 @@ std::vector<Keypoint> find_keypoints_and_descriptors(const Image& img, float sig
 {
     assert(img.channels == 1 || img.channels == 3);
 
+    //L'image est d'abord convertie en niveaux de gris (luminance)
+    //TODO : vérifier la luminance
     const Image& input = img.channels == 1 ? img : rgb_to_grayscale(img);
+    //Generation de la pyramide d'images
     ScaleSpacePyramid gaussian_pyramid = generate_gaussian_pyramid(input, sigma_min, num_octaves,
                                                                    scales_per_octave);
+    //Ensuite, on génére la pyramide des impulsions,
+    // qui sont des dérivées x et y des images floutées par noyau gaussien.
     ScaleSpacePyramid dog_pyramid = generate_dog_pyramid(gaussian_pyramid);
+    // Les blobs sont les maxima locaux dans cet espace
     std::vector<Keypoint> tmp_kps = find_keypoints(dog_pyramid, contrast_thresh, edge_thresh);
     ScaleSpacePyramid grad_pyramid = generate_gradient_pyramid(gaussian_pyramid);
     
@@ -473,7 +480,7 @@ float euclidean_dist(std::array<uint8_t, 128>& a, std::array<uint8_t, 128>& b)
         int di = (int)a[i] - b[i];
         dist += di * di;
     }
-    return dist;// std::sqrt(dist);
+    return std::sqrt(dist);
 }
 
 std::vector<std::pair<int, int>> find_keypoint_matches(std::vector<Keypoint>& a,
